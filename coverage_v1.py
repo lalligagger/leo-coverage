@@ -104,11 +104,13 @@ def add_bearing(df_in):
 
 
 def gen_instrument(
-    name="instrument", fl=120, pitch=0.017, h_pix=1024, v_pix=768, mm=True
+    name="instrument", fl=178, pitch=0.025, h_pix=1850, v_pix=1800, mm=True
 ):
     """
     Takes in instrument parameters and calculates the azimuth offset to generate azimuth angles to top corners, and the half-diagonal FOV in angle space.
     These are used in gen_los_offsets to create the full 4-corner instrument frustrum in angle space.
+
+    Defaults are TIRS.
     """
     instrument = {
         "name": name,
