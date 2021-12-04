@@ -7,6 +7,7 @@ from skyfield.framelib import itrs
 def gen_sats(sat_nos=[39084, 49260]):
     """
     Skyfield satellite lookup from Celestrack, based on catalog ID.
+    Landsat 8 & 9 defaults.
     """
     sats = []
     for n in sat_nos:
@@ -42,7 +43,8 @@ def gen_instrument(
 ):
     """
     Takes in instrument parameters and calculates the azimuth offset to generate azimuth angles to top corners, and the half-diagonal FOV in angle space.
-    These are used in gen_los_offsets to create the full 4-corner instrument frustrum in angle space.
+    For v2, we use the horizontal and vertical FOVs instead, which are divided by 2 and applied in the test notebook as (az, el) offsets in LVLH... 
+    The complete function needs to be integrated somewhere below.
     """
     instrument = {
         "name": name,
@@ -63,9 +65,10 @@ def gen_instrument(
 
 
 def los_to_earth(position, pointing):
-    # https://stephenhartzell.medium.com/satellite-line-of-sight-intersection-with-earth-d786b4a6a9b6
     """Find the intersection of a pointing vector with the Earth
     Finds the intersection of a pointing vector u and starting point s with the WGS-84 geoid
+    Source: https://stephenhartzell.medium.com/satellite-line-of-sight-intersection-with-earth-d786b4a6a9b6
+
     Args:
         position (np.array): length 3 array defining the starting point location(s) in meters
         pointing (np.array): length 3 array defining the pointing vector(s) (must be a unit vector)
@@ -127,9 +130,7 @@ def get_los(sat, time):
     pointing = -xyz_dist.km / xyz_dist.length().km
 
     xyz_vel = xyz_dist_rates[1]
-    bearing = xyz_vel.km_per_s / np.sqrt(
-        np.sum(np.square(xyz_vel.km_per_s))
-    )  # LVLH, should this be an input?
+    # bearing = xyz_vel.km_per_s / np.linalg.norm(xyz_vel.km_per_s)
 
     los_xyz = los_to_earth(xyz_dist.km, pointing)  # input is meters
 
@@ -150,25 +151,17 @@ def get_los2(sat, time):
     pointing = -xyz_dist.km / xyz_dist.length().km
 
     xyz_vel = xyz_dist_rates[1]
-    # bearing = xyz_vel.km_per_s / np.sqrt(
-    #     np.sum(np.square(xyz_vel.km_per_s))
-    # )  # LVLH, should this be an input?
     bearing = xyz_vel.km_per_s / np.linalg.norm(xyz_vel.km_per_s)
 
     cross = np.cross(pointing, bearing)
-    # cross = cross/np.sqrt(
-    #     np.sum(np.square(cross))
-    # )
     cross = cross / np.linalg.norm(cross)
 
     lvlh = {"X": bearing, "Y": cross, "Z": pointing}
 
     los_xyz = los_to_earth(xyz_dist.km, pointing)
-
     los = Distance(km=los_xyz)
     los_itrs = ITRSPosition(los)
     los_itrs.at(time).frame_xyz(itrs).km
-
     los_lat, los_lon = wgs84.latlon_of(los_itrs.at(time))
     d = np.sqrt(np.sum(np.square(xyz_dist.km - los_xyz)))
 
