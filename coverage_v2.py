@@ -37,6 +37,30 @@ def gen_times(start_yr=2021, start_mo=11, start_day=20, days=1, step_min=1):
 
     return times
 
+def gen_instrument(
+    name="instrument", fl=120, pitch=0.017, h_pix=1024, v_pix=768, mm=True
+):
+    """
+    Takes in instrument parameters and calculates the azimuth offset to generate azimuth angles to top corners, and the half-diagonal FOV in angle space.
+    These are used in gen_los_offsets to create the full 4-corner instrument frustrum in angle space.
+    """
+    instrument = {
+        "name": name,
+        "fl": fl,
+        "pitch": pitch,
+        "h_pix": h_pix,
+        "v_pix": v_pix,
+        "mm": mm,
+        "hfov_deg": np.degrees(h_pix*pitch/fl), # update to atan
+        "vfov_deg": np.degrees(v_pix*pitch/fl), # update to atan
+        "half_diag_deg": np.degrees(
+            (pitch / fl) * np.sqrt(h_pix ** 2 + v_pix ** 2) / 2
+        ),
+        "az1": np.degrees(np.arctan2(h_pix, v_pix)),
+        "az2": 360 - np.degrees(np.arctan2(h_pix, v_pix)),
+    }
+    return instrument
+
 
 def los_to_earth(position, pointing):
     # https://stephenhartzell.medium.com/satellite-line-of-sight-intersection-with-earth-d786b4a6a9b6
