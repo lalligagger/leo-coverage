@@ -38,12 +38,13 @@ def gen_times(start_yr=2021, start_mo=11, start_day=20, days=1, step_min=1):
 
     return times
 
+
 def gen_instrument(
     name="instrument", fl=178, pitch=0.025, h_pix=1850, v_pix=1800, mm=True
 ):
     """
     Takes in instrument parameters and calculates the azimuth offset to generate azimuth angles to top corners, and the half-diagonal FOV in angle space.
-    For v2, we use the horizontal and vertical FOVs instead, which are divided by 2 and applied in the test notebook as (az, el) offsets in LVLH... 
+    For v2, we use the horizontal and vertical FOVs instead, which are divided by 2 and applied in the test notebook as (az, el) offsets in LVLH...
     The complete function needs to be integrated somewhere below.
 
     Defaults are TIRS.
@@ -55,8 +56,8 @@ def gen_instrument(
         "h_pix": h_pix,
         "v_pix": v_pix,
         "mm": mm,
-        "hfov_deg": np.degrees(h_pix*pitch/fl), # update to atan
-        "vfov_deg": np.degrees(v_pix*pitch/fl), # update to atan
+        "hfov_deg": np.degrees(h_pix * pitch / fl),  # update to atan
+        "vfov_deg": np.degrees(v_pix * pitch / fl),  # update to atan
         "half_diag_deg": np.degrees(
             (pitch / fl) * np.sqrt(h_pix ** 2 + v_pix ** 2) / 2
         ),

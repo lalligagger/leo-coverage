@@ -144,7 +144,7 @@ def los_intercept(lat0, lon0, h0, az, tilt, ell=None, deg=True):
 
 def gen_los_offsets(df_in, inst):
     """
-    Calculates instrument "frustrum" in angle space, which is applied in psuedo LVLH frame? (Azimuth / tilt offsets from satellite bearing)
+    Calculates instrument "frustum" in angle space, which is applied in psuedo LVLH frame? (Azimuth / tilt offsets from satellite bearing)
     Returns returns a df that should be unmodified, and a geodf that has polygons of FOV intercepts.
     Currently works at yaw=0/ nadir pointing only. These would be added as offsets to all frustrum corners.
     TODO:
