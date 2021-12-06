@@ -156,10 +156,13 @@ def get_los2(sat, time):
     xyz_vel = xyz_dist_rates[1]
     bearing = xyz_vel.km_per_s / np.linalg.norm(xyz_vel.km_per_s)
 
-    cross = np.cross(pointing, bearing)
-    cross = cross / np.linalg.norm(cross)
+    neg_orb_normal = -np.cross(pointing, bearing)
+    x_axis = np.cross(neg_orb_normal, pointing)
+    lvlh = {"X": x_axis, "Y": neg_orb_normal, "Z": pointing}
 
-    lvlh = {"X": bearing, "Y": cross, "Z": pointing}
+    # cross = np.cross(pointing, bearing)
+    # cross = cross / np.linalg.norm(cross)
+    # lvlh = {"X": bearing, "Y": cross, "Z": pointing}
 
     los_xyz = los_to_earth(xyz_dist.km, pointing)
     los = Distance(km=los_xyz)

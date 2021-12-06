@@ -1,3 +1,9 @@
+# Local data
+
+de421.bsp
+tle-*.txt
+*.parquet
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
