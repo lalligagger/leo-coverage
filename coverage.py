@@ -2,6 +2,7 @@ import numpy as np
 from skyfield.api import load, wgs84, Distance
 from skyfield.toposlib import ITRSPosition
 from skyfield.framelib import itrs
+from scipy.spatial.transform import Rotation
 
 
 def gen_sats(sat_nos=[39084, 49260]):
@@ -49,6 +50,8 @@ def gen_instrument(
 
     Defaults are TIRS.
     """
+    hfov_deg = np.degrees(h_pix * pitch / fl)
+    vfov_deg = np.degrees(v_pix * pitch / fl)
     instrument = {
         "name": name,
         "fl": fl,
@@ -56,13 +59,18 @@ def gen_instrument(
         "h_pix": h_pix,
         "v_pix": v_pix,
         "mm": mm,
-        "hfov_deg": np.degrees(h_pix * pitch / fl),  # update to atan
-        "vfov_deg": np.degrees(v_pix * pitch / fl),  # update to atan
+        "hfov_deg": hfov_deg,  # update to atan
+        "vfov_deg": vfov_deg,  # update to atan
         "half_diag_deg": np.degrees(
             (pitch / fl) * np.sqrt(h_pix ** 2 + v_pix ** 2) / 2
         ),
         "az1": np.degrees(np.arctan2(h_pix, v_pix)),
         "az2": 360 - np.degrees(np.arctan2(h_pix, v_pix)),
+        "corners" : {"c1": {"X" : -hfov_deg/2, "Y": vfov_deg/2}, 
+                "c2": {"X" : hfov_deg/2, "Y": vfov_deg/2},
+                "c3": {"X" : hfov_deg/2, "Y": -vfov_deg/2},
+                "c4": {"X" : -hfov_deg/2, "Y": -vfov_deg/2}
+            }
     }
     return instrument
 
@@ -147,7 +155,7 @@ def get_los(sat, time):
     return los_lat, los_lon, d
 
 
-def get_los2(sat, time):
+def get_lvlh_pointing(sat, time):
     geo = sat.at(time)
     xyz_dist_rates = geo.frame_xyz_and_velocity(itrs)
     xyz_dist = xyz_dist_rates[0]
@@ -168,10 +176,59 @@ def get_los2(sat, time):
     los = Distance(km=los_xyz)
     los_itrs = ITRSPosition(los)
     los_itrs.at(time).frame_xyz(itrs).km
-    los_lat, los_lon = wgs84.latlon_of(los_itrs.at(time))
-    d = np.sqrt(np.sum(np.square(xyz_dist.km - los_xyz)))
 
-    return los_lat, los_lon, d, lvlh, pointing
+    return lvlh, pointing
+
+def get_inst_fov(sat, time, inst):
+
+    lvlh, pointing = get_lvlh_pointing(sat, time)
+    xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
+    xyz_dist = xyz_dist_rates[0]
+    z_rate = xyz_dist_rates[1]
+    # direction.append(z_rate.km_per_s[2])
+
+    # Empty dict to populate with lat/ lons, mapped from cs_dict in angle space
+    cs_lla_dict = {"c1": {"lat" : None, "lon": None}, 
+        "c2": {"lat" : None, "lon": None},
+        "c3": {"lat" : None, "lon": None},
+        "c4": {"lat" : None, "lon": None}
+    }
+
+    # For each corner in FOV...
+    for c in inst["corners"]:
+        # Generate X and Y rotation vectors
+        rot_X_deg = inst["corners"][c]["X"]
+        rot_X_rad = np.radians(rot_X_deg)
+        rot_X_ax = lvlh["X"]
+
+        rot_Y_deg = inst["corners"][c]["Y"]
+        rot_Y_rad = np.radians(rot_Y_deg)
+        rot_Y_ax = lvlh["Y"]
+
+        # Rotations with scipy: 
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html
+        # Rotate about X
+        rot_X_vec = rot_X_rad * rot_X_ax
+        rot_X = Rotation.from_rotvec(rot_X_vec)
+        los_X = rot_X.apply(pointing)
+
+        # Rotate about Y for final LOS
+        rot_Y_vec = rot_Y_rad * rot_Y_ax
+        rot_Y = Rotation.from_rotvec(rot_Y_vec)
+        los_XY = rot_Y.apply(los_X)
+
+        # Get Earth intercept of LOS, create ITRS position object
+        los_xyz = los_to_earth(xyz_dist.km, los_XY)
+        los = Distance(km=los_xyz)
+        los_itrs = ITRSPosition(los)
+        los_itrs.at(time).frame_xyz(itrs).km
+
+        # Calculate intercept lat/ lon from ITRS frame
+        los_lat, los_lon = wgs84.latlon_of(los_itrs.at(time))
+        cs_lla_dict[c]["lat"] = los_lat.degrees
+        cs_lla_dict[c]["lon"] = los_lon.degrees
+
+    return cs_lla_dict
 
 
 if __name__ == "__main__":
