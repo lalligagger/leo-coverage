@@ -169,15 +169,6 @@ def get_lvlh_pointing(sat, time):
     x_axis = np.cross(neg_orb_normal, pointing)
     lvlh = {"X": x_axis, "Y": neg_orb_normal, "Z": pointing}
 
-    # cross = np.cross(pointing, bearing)
-    # cross = cross / np.linalg.norm(cross)
-    # lvlh = {"X": bearing, "Y": cross, "Z": pointing}
-
-    los_xyz = los_to_earth(xyz_dist.km, pointing)
-    los = Distance(km=los_xyz)
-    los_itrs = ITRSPosition(los)
-    los_itrs.at(time).frame_xyz(itrs).km
-
     return lvlh, pointing
 
 
@@ -224,7 +215,6 @@ def get_inst_fov(sat, time, inst):
         los_xyz = los_to_earth(xyz_dist.km, los_XY)
         los = Distance(km=los_xyz)
         los_itrs = ITRSPosition(los)
-        los_itrs.at(time).frame_xyz(itrs).km
 
         # Calculate intercept lat/ lon from ITRS frame
         los_lat, los_lon = wgs84.latlon_of(los_itrs.at(time))
@@ -235,7 +225,7 @@ def get_inst_fov(sat, time, inst):
 
 
 if __name__ == "__main__":
-    tles = gen_sats(sat_nos=[48915])
+    tles = gen_sats(sat_nos=[49260])
     sat = tles[0][0]
     times = gen_times(start_yr=2021, start_mo=11, start_day=27, days=1, step_min=1)
     los_lat, los_lon, d = get_los(sat, times[0])
