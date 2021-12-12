@@ -66,11 +66,12 @@ def gen_instrument(
         ),
         "az1": np.degrees(np.arctan2(h_pix, v_pix)),
         "az2": 360 - np.degrees(np.arctan2(h_pix, v_pix)),
-        "corners" : {"c1": {"X" : -hfov_deg/2, "Y": vfov_deg/2}, 
-                "c2": {"X" : hfov_deg/2, "Y": vfov_deg/2},
-                "c3": {"X" : hfov_deg/2, "Y": -vfov_deg/2},
-                "c4": {"X" : -hfov_deg/2, "Y": -vfov_deg/2}
-            }
+        "corners": {
+            "c1": {"X": -hfov_deg / 2, "Y": vfov_deg / 2},
+            "c2": {"X": hfov_deg / 2, "Y": vfov_deg / 2},
+            "c3": {"X": hfov_deg / 2, "Y": -vfov_deg / 2},
+            "c4": {"X": -hfov_deg / 2, "Y": -vfov_deg / 2},
+        },
     }
     return instrument
 
@@ -179,6 +180,7 @@ def get_lvlh_pointing(sat, time):
 
     return lvlh, pointing
 
+
 def get_inst_fov(sat, time, inst):
 
     lvlh, pointing = get_lvlh_pointing(sat, time)
@@ -188,10 +190,11 @@ def get_inst_fov(sat, time, inst):
     # direction.append(z_rate.km_per_s[2])
 
     # Empty dict to populate with lat/ lons, mapped from cs_dict in angle space
-    cs_lla_dict = {"c1": {"lat" : None, "lon": None}, 
-        "c2": {"lat" : None, "lon": None},
-        "c3": {"lat" : None, "lon": None},
-        "c4": {"lat" : None, "lon": None}
+    cs_lla_dict = {
+        "c1": {"lat": None, "lon": None},
+        "c2": {"lat": None, "lon": None},
+        "c3": {"lat": None, "lon": None},
+        "c4": {"lat": None, "lon": None},
     }
 
     # For each corner in FOV...
@@ -205,7 +208,7 @@ def get_inst_fov(sat, time, inst):
         rot_Y_rad = np.radians(rot_Y_deg)
         rot_Y_ax = lvlh["Y"]
 
-        # Rotations with scipy: 
+        # Rotations with scipy:
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html
         # Rotate about X
         rot_X_vec = rot_X_rad * rot_X_ax
