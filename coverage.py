@@ -204,17 +204,18 @@ def get_inst_fov(sat, time, inst):
         # Rotate about X
         rot_X_vec = rot_X_rad * rot_X_ax
         rot_X = Rotation.from_rotvec(rot_X_vec)
-        los_X = rot_X.apply(pointing)
+        # los_X = rot_X.apply(pointing)
 
         # Rotate about Y for final LOS
         rot_Y_vec = rot_Y_rad * rot_Y_ax
         rot_Y = Rotation.from_rotvec(rot_Y_vec)
-        los_XY = rot_Y.apply(los_X)
+        # los_XY = rot_Y.apply(los_X)
+        rot = rot_X*rot_Y
+        los_XY = rot.apply(pointing)
 
         # Get Earth intercept of LOS, create ITRS position object
         los_xyz = los_to_earth(xyz_dist.km, los_XY)
-        los = Distance(km=los_xyz)
-        los_itrs = ITRSPosition(los)
+        los_itrs = ITRSPosition(Distance(km=los_xyz))
 
         # Calculate intercept lat/ lon from ITRS frame
         los_lat, los_lon = wgs84.latlon_of(los_itrs.at(time))
