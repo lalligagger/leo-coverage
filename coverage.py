@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/srv/conda/envs/notebook')
+
 import numpy as np
 from skyfield.api import load, wgs84, Distance
 from skyfield.toposlib import ITRSPosition
