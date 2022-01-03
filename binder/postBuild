@@ -1,3 +1,2 @@
 #!/bin/bash
-conda env create -f environment.yml
-conda run --no-capture-output -n coverage python3 coverage.py
+conda run --no-capture-output -n kernel python3 coverage.py
