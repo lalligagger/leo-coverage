@@ -1,1 +1,2 @@
-python3 coverage.py
+#!/bin/bash
+python coverage.py
