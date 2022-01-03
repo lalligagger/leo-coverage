@@ -1,2 +1,2 @@
 #!/bin/bash
-conda run --no-capture-output -n coverage python coverage.py
+conda run --no-capture-output -n notebook python coverage.py
