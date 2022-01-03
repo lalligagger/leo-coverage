@@ -1,2 +1,0 @@
-#!/bin/bash
-# conda run --no-capture-output -n notebook python3 coverage.py
