@@ -1,2 +1,3 @@
 #!/bin/bash
-conda run --no-capture-output -n notebook python3 coverage.py
+conda env create -f environment.yml
+conda run --no-capture-output -n coverage python3 coverage.py
