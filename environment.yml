@@ -1,3 +1,4 @@
+# from: https://github.com/binder-examples/python-conda_pip/blob/HEAD/environment.yml
 name: coverage
 channels:
   - defaults
@@ -11,4 +12,4 @@ dependencies:
   - pip:
     - scipy
     - skyfield
-prefix: /Users/kevinlalli/miniconda3/envs/coverage
+# prefix: /Users/kevinlalli/miniconda3/envs/coverage
