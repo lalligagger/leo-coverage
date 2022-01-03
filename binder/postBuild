@@ -1,2 +1,3 @@
 #!/bin/bash
-python coverage.py
+python3 -m venv /opt/venv
+python3 coverage.py
