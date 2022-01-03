@@ -6,8 +6,9 @@ dependencies:
   - geopandas
   - pandas
   - numpy
+  - shapely
   - pip
   pip:
     - scipy
     - skyfield
-# prefix: /Users/kevinlalli/miniconda3/envs/coverage
+prefix: /Users/kevinlalli/miniconda3/envs/coverage
