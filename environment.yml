@@ -8,7 +8,7 @@ dependencies:
   - numpy
   - shapely
   - pip
-  pip:
-    - scipy
-    - skyfield
+    pip:
+      - scipy
+      - skyfield
 prefix: /Users/kevinlalli/miniconda3/envs/coverage
