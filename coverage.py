@@ -4,6 +4,12 @@ from skyfield.toposlib import ITRSPosition
 from skyfield.framelib import itrs
 from scipy.spatial.transform import Rotation
 
+import shapely
+import branca
+from shapely.geometry import Polygon
+import geopandas as gpd
+import pandas as pd
+
 
 def gen_sats(sat_nos=[39084, 49260]):
     """
@@ -224,18 +230,112 @@ def get_inst_fov(sat, time, inst):
 
     return cs_lla_dict
 
+def forecast_fovs(sat, times, inst):
+
+    # Create temporary function that can be vectorized
+    def gen_fov_poly(time):
+        # Get the ITRS position of the satellite as origin of LVLH frame.
+        xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
+        # xyz_dist = xyz_dist_rates[0]
+        z_rate = xyz_dist_rates[1]
+        
+        # Descending only filter:
+        if z_rate.km_per_s[2] < 0:
+            cs_lla_dict = get_inst_fov(sat, time, inst)
+
+            # Add lat, lon offset for each corner of FOV
+            return Polygon([(cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]), 
+                    (cs_lla_dict["c2"]["lon"], cs_lla_dict["c2"]["lat"]), 
+                    (cs_lla_dict["c3"]["lon"], cs_lla_dict["c3"]["lat"]),
+                    (cs_lla_dict["c4"]["lon"], cs_lla_dict["c4"]["lat"]),
+                    (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"])]
+                    )
+
+    vfunc = np.vectorize(gen_fov_poly)
+    polys = vfunc(times)
+
+    poly_df = gpd.GeoDataFrame(
+            data=polys, 
+            columns=['geometry'], 
+            crs="EPSG:4326"
+            )
+    poly_df["satellite"] = sat.name
+    poly_df["id"] = np.abs(sat.target)
+    poly_df["time"] = times.utc_strftime()
+
+    return poly_df
+
+def create_grid(bounds, xcell_size, ycell_size):
+    (xmin, ymin, xmax, ymax) = bounds
+
+    # Create grid of points with regular spacing in degrees
+    # projection of the grid
+    crs = 'EPSG:4326'
+
+    xcells = np.arange(xmin, xmax+xcell_size, xcell_size)
+    ycells = np.arange(ymin, ymax+ycell_size, ycell_size)
+    grid_shape = (len(xcells), len(ycells))
+
+    # create the grid points in a loop
+    grid_points = []
+    for x0 in xcells:
+        for y0 in ycells:
+            grid_points.append(shapely.geometry.Point(x0, y0))
+
+    grid = gpd.GeoDataFrame(grid_points, columns=['geometry'], 
+                                    crs=crs)
+    
+    return grid, grid_shape
+
+
 
 if __name__ == "__main__":
-    tles = gen_sats(sat_nos=[49260])
-    sat = tles[0][0]
-    times = gen_times(start_yr=2021, start_mo=11, start_day=27, days=1, step_min=1)
-    los_lat, los_lon, d = get_los(sat, times[0])
-    geo = sat.at(times[0])
-    lat, lon = wgs84.latlon_of(geo)
-    print(lat)
-    print(los_lat)
 
-    print(lon)
-    print(los_lon)
+    num_days = 2
+    tles = gen_sats(sat_nos=[39084,49260])
+    times = gen_times(start_yr=2021, start_mo=12, start_day=10, days=num_days, step_min=1)
+    inst = gen_instrument(name="tirs", fl=178, pitch=0.025, h_pix=1850, v_pix=4000, mm=True) # Adjusted TIRS for 1 min FOVs
 
-    print(d)
+    # Select cell size for coverage map
+    xcell_size = ycell_size = 0.5
+    ## Select AOI from gpd naturalearth dataset (filter by .name for country, .continent for continent)
+    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    # aoi =  world[world.name == "Brazil"].geometry
+    aoi =  world[world.continent == "South America"].geometry
+    # aoi = world[world.name == "United States of America"]#.geometry
+
+    # Batch FOV generation over N satellites
+
+    gdfs = []
+    for tle in tles:
+        sat = tle[0]
+        poly_df = forecast_fovs(sat, times, inst)
+        gdfs.append(poly_df)
+
+    poly_df = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs="epsg:4326")
+    poly_df["lonspan"] = poly_df.bounds['maxx'] - poly_df.bounds['minx']
+
+    # Filter shapes crossing anti-meridian
+    plot_df = poly_df[poly_df["lonspan"] < 20].copy()
+
+    # Filter by AOI
+    xmin, ymin, xmax, ymax= aoi.total_bounds
+    plot_df = plot_df.cx[xmin: xmax, ymin: ymax]
+
+    # Create cmap for unique satellites and create color column
+    sat_ids = list(poly_df["id"].unique()).sort()
+    cmap = branca.colormap.StepColormap(['red', 'blue'], sat_ids, vmin=139084, vmax = 149260)
+    poly_df['color'] = poly_df['id'].apply(cmap)
+
+    ## Coverage data analysis for single satellite/ batch of satellites
+    # 1) Create a grid of equally spaced points
+    grid, grid_shape = create_grid(aoi.total_bounds, xcell_size, ycell_size)
+
+    # 2) Add "n_visits" column to grid using sjoin/ dissolve
+    shapes = gpd.GeoDataFrame(plot_df.geometry)
+    merged = gpd.sjoin(shapes, grid, how='left', predicate="intersects")
+    merged['n_visits']=0 # this will be replaced with nan or positive int where n_visits > 0
+    dissolve = merged.dissolve(by="index_right", aggfunc="count") # no difference in count vs. sum here?
+    grid.loc[dissolve.index, 'n_visits'] = dissolve.n_visits.values
+
+    print(grid.n_visits.describe())
