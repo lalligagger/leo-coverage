@@ -2,10 +2,9 @@ name: coverage
 channels:
   - defaults
 dependencies:
-  # - jupyterlab
-  # - nb_conda_kernels
   - python=3.7.10
   - geopandas
   - pandas
   - numpy
-prefix: /Users/kevinlalli/miniconda3/envs/coverage
+  - scipy
+# prefix: /Users/kevinlalli/miniconda3/envs/coverage
