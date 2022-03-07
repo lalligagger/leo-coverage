@@ -3,11 +3,14 @@ name: coverage
 channels:
   - defaults
 dependencies:
-  - python=3.7.10
-  - geopandas
+  # - python=3.7.10
+  - python=3.8.10 # spacebar integration
+  - geopandas=0.10.2
   - pandas
   - numpy
   - shapely
+  - folium=0.12.1.post1
+  - branca=0.4.2
   - pip
   - pip:
     - scipy
