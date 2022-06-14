@@ -7,10 +7,12 @@ dependencies:
   - python=3.8.10 # spacebar integration
   - geopandas=0.10.2
   - pandas
+  - pystac
   - numpy
   - shapely
   - folium=0.12.1.post1
   - branca=0.4.2
+  - rasterio
   - pip
   - pip:
     - scipy
