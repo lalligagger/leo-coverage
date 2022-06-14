@@ -1,6 +1,8 @@
 # Local data
 tmp/
 stac_catalog/
+historical_tles/
+WRS2_descending_0/
 de421.bsp
 tle-*.txt
 *.parquet

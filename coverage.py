@@ -250,6 +250,7 @@ def forecast_fovs(sat, times, inst):
         
         # Descending only filter:
         if z_rate.km_per_s[2] < 0:
+
             cs_lla_dict = get_inst_fov(sat, time, inst)
 
             # Add lat, lon offset for each corner of FOV
