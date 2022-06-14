@@ -1,0 +1,62 @@
+{
+  "type": "Feature",
+  "stac_version": "1.0.0",
+  "id": "1",
+  "properties": {
+    "datetime": "2022-06-14T01:02:05.139847Z"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -81.41094255239946,
+          -55.61183
+        ],
+        [
+          -81.41094255239946,
+          13.38817
+        ],
+        [
+          -34.41094255239946,
+          13.38817
+        ],
+        [
+          -34.41094255239946,
+          -55.61183
+        ],
+        [
+          -81.41094255239946,
+          -55.61183
+        ]
+      ]
+    ]
+  },
+  "links": [
+    {
+      "rel": "root",
+      "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/catalog.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "parent",
+      "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/catalog.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "self",
+      "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/1/1.json",
+      "type": "application/json"
+    }
+  ],
+  "assets": {},
+  "bbox": [
+    -81.41094255239946,
+    -55.61183,
+    -34.41094255239946,
+    13.388170000000002
+  ],
+  "stac_extensions": [
+    "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+  ]
+}

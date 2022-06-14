@@ -1,0 +1,26 @@
+{
+  "type": "Catalog",
+  "id": "forecast-test",
+  "stac_version": "1.0.0",
+  "description": "This is a test of Landsat image forecasts",
+  "links": [
+    {
+      "rel": "root",
+      "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/catalog.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "item",
+      "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/1/1.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "self",
+      "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/catalog.json",
+      "type": "application/json"
+    }
+  ],
+  "stac_extensions": [
+    "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+  ]
+}
