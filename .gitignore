@@ -1,5 +1,6 @@
 # Local data
-
+tmp/
+stac_catalog/
 de421.bsp
 tle-*.txt
 *.parquet
