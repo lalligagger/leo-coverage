@@ -7,6 +7,12 @@
     {
       "rel": "root",
       "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/catalog.json",
+      "type": "application/json",
+      "title": "Landsat FOVs"
+    },
+    {
+      "rel": "item",
+      "href": "/Users/kevinlalli/python_dev/leo-coverage/stac_catalog/0/0.json",
       "type": "application/json"
     },
     {
@@ -22,5 +28,6 @@
   ],
   "stac_extensions": [
     "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
-  ]
+  ],
+  "title": "Landsat FOVs"
 }

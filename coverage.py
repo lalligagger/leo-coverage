@@ -9,9 +9,10 @@ import branca
 from shapely.geometry import Polygon
 import geopandas as gpd
 import pandas as pd
+from rich import print
 
 
-def gen_sats(sat_nos=[39084, 49260]):
+def gen_sats(sat_nos=[48915]):
     """
     Skyfield satellite lookup from Celestrack, based on catalog ID.
     Landsat 8 & 9 defaults.
@@ -22,12 +23,21 @@ def gen_sats(sat_nos=[39084, 49260]):
         tle_filename = "tle-CATNR-{}.txt".format(n)
         sat = load.tle_file(url, filename=tle_filename)
         sats.append(sat)
-
     print("Satellite(s) Loaded from TLE:")
     for sat in sats:
         print(sat)
-
     return sats
+
+
+def single_sat(sat_no):
+    """
+    Skyfield satellite lookup from Celestrack.
+    """
+    url = "https://celestrak.com/satcat/tle.php?CATNR={}".format(sat_no)
+    tle_filename = "tle-CATNR-{}.txt".format(sat_no)
+    sat = load.tle_file(url, filename=tle_filename)
+    print("Satellite Loaded from TLE:")
+    return sat
 
 
 def gen_times(start_yr=2021, start_mo=11, start_day=20, days=1, step_min=1):
@@ -53,7 +63,6 @@ def gen_instrument(
     Takes in instrument parameters and calculates the azimuth offset to generate azimuth angles to top corners, and the half-diagonal FOV in angle space.
     For v2, we use the horizontal and vertical FOVs instead, which are divided by 2 and applied in the test notebook as (az, el) offsets in LVLH...
     The complete function needs to be integrated somewhere below.
-
     Defaults are TIRS.
     """
     hfov_deg = np.degrees(h_pix * pitch / fl)
@@ -86,7 +95,6 @@ def los_to_earth(position, pointing):
     """Find the intersection of a pointing vector with the Earth
     Finds the intersection of a pointing vector u and starting point s with the WGS-84 geoid
     Source: https://stephenhartzell.medium.com/satellite-line-of-sight-intersection-with-earth-d786b4a6a9b6
-
     Args:
         position (np.array): length 3 array defining the starting point location(s) in meters
         pointing (np.array): length 3 array defining the pointing vector(s) (must be a unit vector)
