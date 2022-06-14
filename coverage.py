@@ -45,7 +45,8 @@ def gen_times(start_yr=2022, start_mo=6, start_day=15, days=1, step_min=1):
     Generate skyfield timespan over desired range.
     """
     ts = load.timescale()
-    times = ts.utc(start_yr, start_mo, start_day, 0, range(0, 60 * 24 * days, step_min))
+    # times = ts.utc(start_yr, start_mo, start_day, 0, range(0, 60 * 24 * days, step_min))
+    times = ts.utc(start_yr, start_mo, start_day, 0, np.arange(0, 60 * 24 * days, step_min))
 
     print(
         "Propogation time: \n {} \nto \n {}".format(
