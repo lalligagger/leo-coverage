@@ -9,7 +9,7 @@ import branca
 from shapely.geometry import Polygon
 import geopandas as gpd
 import pandas as pd
-from rich import print
+# from rich import print
 
 
 def gen_sats(sat_nos=[48915]):
@@ -19,7 +19,7 @@ def gen_sats(sat_nos=[48915]):
     """
     sats = []
     for n in sat_nos:
-        url = "https://celestrak.com/satcat/tle.php?CATNR={}".format(n)
+        url = "https://celestrak.org/NORAD/elements/gp.php?CATNR={}".format(n)
         tle_filename = "tle-CATNR-{}.txt".format(n)
         sat = load.tle_file(url, filename=tle_filename)
         sats.append(sat)
@@ -33,14 +33,14 @@ def single_sat(sat_no):
     """
     Skyfield satellite lookup from Celestrack.
     """
-    url = "https://celestrak.com/satcat/tle.php?CATNR={}".format(sat_no)
+    url = "https://celestrak.org/NORAD/elements/gp.php?CATNR={}".format(sat_no)
     tle_filename = "tle-CATNR-{}.txt".format(sat_no)
     sat = load.tle_file(url, filename=tle_filename)
     print("Satellite Loaded from TLE:")
     return sat
 
 
-def gen_times(start_yr=2021, start_mo=11, start_day=20, days=1, step_min=1):
+def gen_times(start_yr=2022, start_mo=6, start_day=15, days=1, step_min=1):
     """
     Generate skyfield timespan over desired range.
     """
