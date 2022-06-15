@@ -5,14 +5,11 @@ from datetime import datetime, timezone, timedelta
 from coverage import * 
 
 ts = load.timescale()
-
 now_utc = datetime.now(timezone.utc)
-
-print(now_utc)
-today = ts.from_datetime(now_utc)
-
 tom_utc = now_utc + timedelta(days=1, hours=2)
-tom = ts.from_datetime(tom_utc)
+
+now_ts = ts.from_datetime(now_utc)
+tom_ts = ts.from_datetime(tom_utc)
 
 @dataclass
 class Scene:
@@ -20,8 +17,8 @@ class Scene:
     aoi_dir: str = "../aois/hytran_test/"
     out_dir: str = "../output/hytran_test/"
 
-    start_utc: str = str(today.utc_strftime())
-    end_utc: str = str(tom.utc_strftime())
+    start_utc: str = str(now_ts.utc_strftime())
+    end_utc: str = str(tom_ts.utc_strftime())
 
     # Simulation parameters (are these always used?)
     wav_min_um: float = 10.0
@@ -44,17 +41,18 @@ class Instrument:
     pitch_um: float = 25.0
     cols: int = 1850
     rows: int = 1800
+    framerate: float = 1/22
 
 @dataclass
 class Platform:
-    name: str = "Landsat 8"
+    name: str = "Landsat 9"
 
     # Simulation clock (how often pos, attitude, thermal are updated)
     sim_clock_hz: float = 100.0
 
     # Satellite NORAD identifier for TLE lookup
-    norad_id: int = 48915
-    satellite: list = single_sat(norad_id)[0]
+    norad_id: int = 49260
+    # satellite: list = single_sat(norad_id)[0]
 
     # Position info
     coord_frame: str = "ITRS"

@@ -57,8 +57,8 @@ def gen_times(start_yr=2022, start_mo=6, start_day=15, days=1, step_min=1):
     return times
 
 
-def gen_instrument(
-    name="instrument", fl=178, pitch=0.025, h_pix=1850, v_pix=1800, mm=True
+def camera_model(
+    name="instrument", fl=178, pitch=0.025, h_pix=1850, v_pix=1800, 
 ):
     """
     Takes in instrument parameters and calculates the azimuth offset to generate azimuth angles to top corners, and the half-diagonal FOV in angle space.
@@ -74,7 +74,6 @@ def gen_instrument(
         "pitch": pitch,
         "h_pix": h_pix,
         "v_pix": v_pix,
-        "mm": mm,
         "hfov_deg": hfov_deg,  # update to atan
         "vfov_deg": vfov_deg,  # update to atan
         "half_diag_deg": np.degrees(
@@ -304,7 +303,7 @@ if __name__ == "__main__":
     num_days = 2
     tles = gen_sats(sat_nos=[39084,49260])
     times = gen_times(start_yr=2021, start_mo=12, start_day=10, days=num_days, step_min=1)
-    inst = gen_instrument(name="tirs", fl=178, pitch=0.025, h_pix=1850, v_pix=4000, mm=True) # Adjusted TIRS for 1 min FOVs
+    inst = camera_model(name="tirs", fl=178, pitch=0.025, h_pix=1850, v_pix=4000, ) # Adjusted TIRS for 1 min FOVs
 
     # Select cell size for coverage map
     xcell_size = ycell_size = 0.5
