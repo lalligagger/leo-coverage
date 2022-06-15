@@ -41,7 +41,7 @@ class Instrument:
     pitch_um: float = 25.0
     cols: int = 1850
     rows: int = 1800
-    framerate: float = 1/22
+    img_period: float = 22/60
 
 @dataclass
 class Platform:
