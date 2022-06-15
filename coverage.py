@@ -37,6 +37,7 @@ def single_sat(sat_no):
     tle_filename = "tle-CATNR-{}.txt".format(sat_no)
     sat = load.tle_file(url, filename=tle_filename)
     print("Satellite Loaded from TLE:")
+    print(sat)
     return sat
 
 
@@ -263,16 +264,16 @@ def forecast_fovs(sat, times, inst):
     vfunc = np.vectorize(gen_fov_poly)
     polys = vfunc(times)
 
-    poly_df = gpd.GeoDataFrame(
+    fov_df = gpd.GeoDataFrame(
             data=polys, 
             columns=['geometry'], 
             crs="EPSG:4326"
             )
-    poly_df["satellite"] = sat.name
-    poly_df["id"] = np.abs(sat.target)
-    poly_df["time"] = times.utc_strftime()
+    fov_df["satellite"] = sat.name
+    fov_df["id"] = np.abs(sat.target)
+    fov_df["time"] = times.utc_strftime()
 
-    return poly_df
+    return fov_df
 
 def create_grid(bounds, xcell_size, ycell_size):
     (xmin, ymin, xmax, ymax) = bounds
@@ -318,30 +319,30 @@ if __name__ == "__main__":
     gdfs = []
     for tle in tles:
         sat = tle[0]
-        poly_df = forecast_fovs(sat, times, inst)
-        gdfs.append(poly_df)
+        fov_df = forecast_fovs(sat, times, inst)
+        gdfs.append(fov_df)
 
-    poly_df = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs="epsg:4326")
-    poly_df["lonspan"] = poly_df.bounds['maxx'] - poly_df.bounds['minx']
+    fov_df = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs="epsg:4326")
+    fov_df["lonspan"] = fov_df.bounds['maxx'] - fov_df.bounds['minx']
 
     # Filter shapes crossing anti-meridian
-    plot_df = poly_df[poly_df["lonspan"] < 20].copy()
+    fov_df = fov_df[fov_df["lonspan"] < 20].copy()
 
     # Filter by AOI
     xmin, ymin, xmax, ymax= aoi.total_bounds
-    plot_df = plot_df.cx[xmin: xmax, ymin: ymax]
+    fov_df = fov_df.cx[xmin: xmax, ymin: ymax]
 
     # Create cmap for unique satellites and create color column
-    sat_ids = list(poly_df["id"].unique()).sort()
+    sat_ids = list(fov_df["id"].unique()).sort()
     cmap = branca.colormap.StepColormap(['red', 'blue'], sat_ids, vmin=139084, vmax = 149260)
-    poly_df['color'] = poly_df['id'].apply(cmap)
+    fov_df['color'] = fov_df['id'].apply(cmap)
 
     ## Coverage data analysis for single satellite/ batch of satellites
     # 1) Create a grid of equally spaced points
     grid, grid_shape = create_grid(aoi.total_bounds, xcell_size, ycell_size)
 
     # 2) Add "n_visits" column to grid using sjoin/ dissolve
-    shapes = gpd.GeoDataFrame(plot_df.geometry)
+    shapes = gpd.GeoDataFrame(fov_df.geometry)
     merged = gpd.sjoin(shapes, grid, how='left', predicate="intersects")
     merged['n_visits']=0 # this will be replaced with nan or positive int where n_visits > 0
     dissolve = merged.dissolve(by="index_right", aggfunc="count") # no difference in count vs. sum here?

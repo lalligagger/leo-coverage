@@ -6,19 +6,16 @@ from coverage import *
 
 ts = load.timescale()
 now_utc = datetime.now(timezone.utc)
-tom_utc = now_utc + timedelta(days=1, hours=2)
-
-now_ts = ts.from_datetime(now_utc)
-tom_ts = ts.from_datetime(tom_utc)
+tom_utc = now_utc + timedelta(days=1, hours=0.5)
 
 @dataclass
 class Scene:
     scene_ref: str = "WRS-2"
-    aoi_dir: str = "../aois/hytran_test/"
-    out_dir: str = "../output/hytran_test/"
+    aoi_dir: str = "./aois/"
+    out_dir: str = "./tmp/"
 
-    start_utc: str = str(now_ts.utc_strftime())
-    end_utc: str = str(tom_ts.utc_strftime())
+    start_utc: str = str(now_utc)
+    end_utc: str = str(tom_utc)
 
     # Simulation parameters (are these always used?)
     wav_min_um: float = 10.0
@@ -45,7 +42,7 @@ class Instrument:
 
 @dataclass
 class Platform:
-    name: str = "Landsat 9"
+    name: str = "LANDSAT 9"
 
     # Simulation clock (how often pos, attitude, thermal are updated)
     sim_clock_hz: float = 100.0
