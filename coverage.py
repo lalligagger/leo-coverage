@@ -13,6 +13,8 @@ import pandas as pd
 from rich import print
 from rich.progress import track
 
+gpd.options.use_pygeos = True
+
 def gen_sats(sat_nos=[48915]):
     """
     Skyfield satellite lookup from Celestrack, based on catalog ID.
@@ -48,7 +50,9 @@ def gen_times(start_yr=2022, start_mo=6, start_day=15, days=1, step_min=1):
     """
     ts = load.timescale()
     # times = ts.utc(start_yr, start_mo, start_day, 0, range(0, 60 * 24 * days, step_min))
-    times = ts.utc(start_yr, start_mo, start_day, 0, np.arange(0, 60 * 24 * days, step_min))
+    times = ts.utc(
+        start_yr, start_mo, start_day, 0, np.arange(0, 60 * 24 * days, step_min)
+    )
 
     print(
         "Propogation time: \n {} \nto \n {}".format(
@@ -60,7 +64,11 @@ def gen_times(start_yr=2022, start_mo=6, start_day=15, days=1, step_min=1):
 
 
 def camera_model(
-    name="instrument", fl=178, pitch=0.025, h_pix=1850, v_pix=1800, 
+    name="instrument",
+    fl=178,
+    pitch=0.025,
+    h_pix=1850,
+    v_pix=1800,
 ):
     """
     Takes in instrument parameters and calculates the azimuth offset to generate azimuth angles to top corners, and the half-diagonal FOV in angle space.
@@ -79,7 +87,7 @@ def camera_model(
         "hfov_deg": hfov_deg,  # update to atan
         "vfov_deg": vfov_deg,  # update to atan
         "half_diag_deg": np.degrees(
-            (pitch / fl) * np.sqrt(h_pix ** 2 + v_pix ** 2) / 2
+            (pitch / fl) * np.sqrt(h_pix**2 + v_pix**2) / 2
         ),
         "az1": np.degrees(np.arctan2(h_pix, v_pix)),
         "az2": 360 - np.degrees(np.arctan2(h_pix, v_pix)),
@@ -115,24 +123,24 @@ def los_to_earth(position, pointing):
     w = pointing[2]
 
     value = (
-        -(a ** 2) * b ** 2 * w * z - a ** 2 * c ** 2 * v * y - b ** 2 * c ** 2 * u * x
+        -(a**2) * b**2 * w * z - a**2 * c**2 * v * y - b**2 * c**2 * u * x
     )
     radical = (
-        a ** 2 * b ** 2 * w ** 2
-        + a ** 2 * c ** 2 * v ** 2
-        - a ** 2 * v ** 2 * z ** 2
-        + 2 * a ** 2 * v * w * y * z
-        - a ** 2 * w ** 2 * y ** 2
-        + b ** 2 * c ** 2 * u ** 2
-        - b ** 2 * u ** 2 * z ** 2
-        + 2 * b ** 2 * u * w * x * z
-        - b ** 2 * w ** 2 * x ** 2
-        - c ** 2 * u ** 2 * y ** 2
-        + 2 * c ** 2 * u * v * x * y
-        - c ** 2 * v ** 2 * x ** 2
+        a**2 * b**2 * w**2
+        + a**2 * c**2 * v**2
+        - a**2 * v**2 * z**2
+        + 2 * a**2 * v * w * y * z
+        - a**2 * w**2 * y**2
+        + b**2 * c**2 * u**2
+        - b**2 * u**2 * z**2
+        + 2 * b**2 * u * w * x * z
+        - b**2 * w**2 * x**2
+        - c**2 * u**2 * y**2
+        + 2 * c**2 * u * v * x * y
+        - c**2 * v**2 * x**2
     )
     magnitude = (
-        a ** 2 * b ** 2 * w ** 2 + a ** 2 * c ** 2 * v ** 2 + b ** 2 * c ** 2 * u ** 2
+        a**2 * b**2 * w**2 + a**2 * c**2 * v**2 + b**2 * c**2 * u**2
     )
 
     if radical < 0:
@@ -226,7 +234,7 @@ def get_inst_fov(sat, time, inst):
         rot_Y_vec = rot_Y_rad * rot_Y_ax
         rot_Y = Rotation.from_rotvec(rot_Y_vec)
         # los_XY = rot_Y.apply(los_X)
-        rot = rot_X*rot_Y
+        rot = rot_X * rot_Y
         los_XY = rot.apply(pointing)
 
         # Get Earth intercept of LOS, create ITRS position object
@@ -240,6 +248,7 @@ def get_inst_fov(sat, time, inst):
 
     return cs_lla_dict
 
+
 def forecast_fovs(sat, times, inst):
     # Create temporary function that can be vectorized
     def gen_fov_poly(time):
@@ -247,43 +256,43 @@ def forecast_fovs(sat, times, inst):
         xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
         # xyz_dist = xyz_dist_rates[0]
         z_rate = xyz_dist_rates[1]
-        
+
         # Descending only filter:
         if z_rate.km_per_s[2] < 0:
 
             cs_lla_dict = get_inst_fov(sat, time, inst)
 
             # Add lat, lon offset for each corner of FOV
-            return Polygon([(cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]), 
-                    (cs_lla_dict["c2"]["lon"], cs_lla_dict["c2"]["lat"]), 
+            return Polygon(
+                [
+                    (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]),
+                    (cs_lla_dict["c2"]["lon"], cs_lla_dict["c2"]["lat"]),
                     (cs_lla_dict["c3"]["lon"], cs_lla_dict["c3"]["lat"]),
                     (cs_lla_dict["c4"]["lon"], cs_lla_dict["c4"]["lat"]),
-                    (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"])]
-                    )
+                    (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]),
+                ]
+            )
 
     vfunc = np.vectorize(gen_fov_poly)
     polys = vfunc(times)
 
-    fov_df = gpd.GeoDataFrame(
-            data=polys, 
-            columns=['geometry'], 
-            crs="EPSG:4326"
-            )
+    fov_df = gpd.GeoDataFrame(data=polys, columns=["geometry"], crs="EPSG:4326")
     fov_df["satellite"] = sat.name
     fov_df["id"] = np.abs(sat.target)
     fov_df["time"] = times.utc_strftime()
 
     return fov_df
 
+
 def create_grid(bounds, xcell_size, ycell_size):
     (xmin, ymin, xmax, ymax) = bounds
 
     # Create grid of points with regular spacing in degrees
     # projection of the grid
-    crs = 'EPSG:4326'
+    crs = "EPSG:4326"
 
-    xcells = np.arange(xmin, xmax+xcell_size, xcell_size)
-    ycells = np.arange(ymin, ymax+ycell_size, ycell_size)
+    xcells = np.arange(xmin, xmax + xcell_size, xcell_size)
+    ycells = np.arange(ymin, ymax + ycell_size, ycell_size)
     grid_shape = (len(xcells), len(ycells))
 
     # create the grid points in a loop
@@ -292,10 +301,10 @@ def create_grid(bounds, xcell_size, ycell_size):
         for y0 in ycells:
             grid_points.append(shapely.geometry.Point(x0, y0))
 
-    grid = gpd.GeoDataFrame(grid_points, columns=['geometry'], 
-                                    crs=crs)
-    
+    grid = gpd.GeoDataFrame(grid_points, columns=["geometry"], crs=crs)
+
     return grid, grid_shape
+
 
 def calculate_revisits(fov_df, aoi, grid_x=0.1, grid_y=0.1):
     # 1) Create a grid of equally spaced points
@@ -303,10 +312,14 @@ def calculate_revisits(fov_df, aoi, grid_x=0.1, grid_y=0.1):
 
     # 2) Add "n_visits" column to grid using sjoin/ dissolve
     shapes = gpd.GeoDataFrame(fov_df.geometry)
-    merged = gpd.sjoin(shapes, grid, how='left', predicate="intersects")
-    merged['n_visits']=0 # this will be replaced with nan or positive int where n_visits > 0
-    dissolve = merged.dissolve(by="index_right", aggfunc="count") # no difference in count vs. sum here?
-    grid.loc[dissolve.index, 'n_visits'] = dissolve.n_visits.values
+    merged = gpd.sjoin(shapes, grid, how="left", predicate="intersects")
+    merged[
+        "n_visits"
+    ] = 0  # this will be replaced with nan or positive int where n_visits > 0
+    dissolve = merged.dissolve(
+        by="index_right", aggfunc="count"
+    )  # no difference in count vs. sum here?
+    grid.loc[dissolve.index, "n_visits"] = dissolve.n_visits.values
     grid.n_visits.fillna(0).describe()
 
     return grid, grid_shape
@@ -324,7 +337,7 @@ def revisit_map(grid, grid_shape, grid_x, grid_y):
 
     def colorfunc(x):
         if np.isnan(x):
-            return (0,0,0,0)
+            return (0, 0, 0, 0)
         else:
             return colormap.rgba_bytes_tuple(x)
 
@@ -334,16 +347,22 @@ def revisit_map(grid, grid_shape, grid_x, grid_y):
     rgba_img = np.moveaxis(rgba_img, 0, 2)
 
     # Update image corner bounds based on cell size
-    xmin, ymin, xmax, ymax= grid.total_bounds
-    xmin = xmin - grid_x/2
-    ymin = ymin - grid_y/2
-    xmax = xmax + grid_x/2
-    ymax = ymax + grid_y/2
+    xmin, ymin, xmax, ymax = grid.total_bounds
+    xmin = xmin - grid_x / 2
+    ymin = ymin - grid_y / 2
+    xmax = xmax + grid_x / 2
+    ymax = ymax + grid_y / 2
 
     m = folium.Map()
     m.fit_bounds([[ymin, xmin], [ymax, xmax]])
-    m.add_child(folium.raster_layers.ImageOverlay(rgba_img, opacity=.4, mercator_project=True,# crs="EPSG:4326",
-                                    bounds = [[ymin,xmin],[ymax,xmax]]))
+    m.add_child(
+        folium.raster_layers.ImageOverlay(
+            rgba_img,
+            opacity=0.4,
+            mercator_project=True,  # crs="EPSG:4326",
+            bounds=[[ymin, xmin], [ymax, xmax]],
+        )
+    )
     colormap.add_to(m)
     # m.save("./tmp/revisits_map.html")
     return m
@@ -354,34 +373,35 @@ if __name__ == "__main__":
     from datetime import datetime, timezone, timedelta
 
     start_dt = datetime.fromisoformat(Scene.start_utc)
-    num_days = 2
-    xcell_size = ycell_size = .1
+    num_days = 8
+    xcell_size = ycell_size = 0.1
 
     tles = gen_sats(
         # sat_nos=[Platform.norad_id] # How to best handle multiple platforms? (TLE vs. SPG4 model too)
-        sat_nos=[39084,49260]
+        sat_nos=[39084, 49260]
     )
 
     inst = camera_model(
-        name=Instrument.name, 
-        fl=Instrument.focal_length_mm, 
-        pitch=Instrument.pitch_um*1e-3, 
-        h_pix=Instrument.rows, 
-        v_pix=Instrument.cols, 
+        name=Instrument.name,
+        fl=Instrument.focal_length_mm,
+        pitch=Instrument.pitch_um * 1e-3,
+        h_pix=Instrument.rows,
+        v_pix=Instrument.cols,
     )
 
     times = gen_times(
         start_yr=start_dt.year,
-        start_mo=start_dt.month, 
-        start_day=start_dt.day, 
-        days=num_days, 
-        step_min=Instrument.img_period)
+        start_mo=start_dt.month,
+        start_day=start_dt.day,
+        days=num_days,
+        step_min=Instrument.img_period,
+    )
 
     ## Batch FOV generation over N satellites - TODO: build multiple sats into config/ main script
     gdfs = []
-    
+
     for tle in track(tles, description="Processing..."):
-    # for tle in tles:
+        # for tle in tles:
         sat = tle[0]
         fov_df = forecast_fovs(sat, times, inst)
         gdfs.append(fov_df)
@@ -389,30 +409,37 @@ if __name__ == "__main__":
 
     ## Filter shapes crossing anti-meridian - also in main function
     ## TODO: Switch to stactools solution for this
-    fov_df["lonspan"] = fov_df.bounds['maxx'] - fov_df.bounds['minx']
+    fov_df["lonspan"] = fov_df.bounds["maxx"] - fov_df.bounds["minx"]
     fov_df = fov_df[fov_df["lonspan"] < 20].copy()
 
     ## Create cmap for unique satellites and create color column
     sat_ids = list(fov_df["id"].unique()).sort()
-    cmap = branca.colormap.StepColormap(['red', 'blue'], sat_ids, vmin=139084, vmax = 149260)
-    fov_df['color'] = fov_df['id'].apply(cmap)
+    cmap = branca.colormap.StepColormap(
+        ["red", "blue"], sat_ids, vmin=139084, vmax=149260
+    )
+    fov_df["color"] = fov_df["id"].apply(cmap)
 
     ## Save to geojson based on sat name
     for satname in fov_df.satellite.unique():
-        fov_df[fov_df.satellite==satname].to_file("./tmp/{}_fovs.geojson".format(satname.replace(" ", "_")))
+        fov_df[fov_df.satellite == satname].to_file(
+            "./tmp/{}_fovs.geojson".format(satname.replace(" ", "_"))
+        )
 
-    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    aoi = gpd.read_file('./aois/eastern_us.geojson').geometry # ...so use AOI for subsection of US
+    world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+    aoi = gpd.read_file(
+        "./aois/eastern_us.geojson"
+    ).geometry  # ...so use AOI for subsection of US
 
     ## Filter fov_df by aoi
-    xmin, ymin, xmax, ymax= aoi.total_bounds
-    fov_df = fov_df.cx[xmin: xmax, ymin: ymax]
+    xmin, ymin, xmax, ymax = aoi.total_bounds
+    fov_df = fov_df.cx[xmin:xmax, ymin:ymax]
 
     ## Coverage data analysis for single satellite/ batch of satellites
-    grid, grid_shape = calculate_revisits(fov_df, aoi, grid_x=xcell_size, grid_y=ycell_size)
-    grid.to_file('./tmp/all_revisits.geojson')
+    grid, grid_shape = calculate_revisits(
+        fov_df, aoi, grid_x=xcell_size, grid_y=ycell_size
+    )
+    grid.to_file("./tmp/all_revisits.geojson")
     print(grid.n_visits.fillna(0).describe())
-
 
     ## Plotting FOVs
 
