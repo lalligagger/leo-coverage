@@ -10,8 +10,8 @@ import folium
 from shapely.geometry import Polygon
 import geopandas as gpd
 import pandas as pd
-# from rich import print
-
+from rich import print
+from rich.progress import track
 
 def gen_sats(sat_nos=[48915]):
     """
@@ -307,8 +307,6 @@ def calculate_revisits(fov_df, aoi, grid_x=0.1, grid_y=0.1):
     merged['n_visits']=0 # this will be replaced with nan or positive int where n_visits > 0
     dissolve = merged.dissolve(by="index_right", aggfunc="count") # no difference in count vs. sum here?
     grid.loc[dissolve.index, 'n_visits'] = dissolve.n_visits.values
-
-    grid.to_file('./tmp/n_visits.geojson')
     grid.n_visits.fillna(0).describe()
 
     return grid, grid_shape
@@ -352,53 +350,83 @@ def revisit_map(grid, grid_shape, grid_x, grid_y):
 
 
 if __name__ == "__main__":
+    from landsat import Scene, Instrument, Platform
+    from datetime import datetime, timezone, timedelta
 
+    start_dt = datetime.fromisoformat(Scene.start_utc)
     num_days = 2
-    tles = gen_sats(sat_nos=[39084,49260])
-    times = gen_times(start_yr=2021, start_mo=12, start_day=10, days=num_days, step_min=1)
-    inst = camera_model(name="tirs", fl=178, pitch=0.025, h_pix=1850, v_pix=4000, ) # Adjusted TIRS for 1 min FOVs
+    xcell_size = ycell_size = .1
 
-    # Select cell size for coverage map
-    xcell_size = ycell_size = 0.5
-    ## Select AOI from gpd naturalearth dataset (filter by .name for country, .continent for continent)
-    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-    # aoi =  world[world.name == "Brazil"].geometry
-    aoi =  world[world.continent == "South America"].geometry
-    # aoi = world[world.name == "United States of America"]#.geometry
+    tles = gen_sats(
+        # sat_nos=[Platform.norad_id] # How to best handle multiple platforms? (TLE vs. SPG4 model too)
+        sat_nos=[39084,49260]
+    )
 
-    # Batch FOV generation over N satellites
+    inst = camera_model(
+        name=Instrument.name, 
+        fl=Instrument.focal_length_mm, 
+        pitch=Instrument.pitch_um*1e-3, 
+        h_pix=Instrument.rows, 
+        v_pix=Instrument.cols, 
+    )
 
+    times = gen_times(
+        start_yr=start_dt.year,
+        start_mo=start_dt.month, 
+        start_day=start_dt.day, 
+        days=num_days, 
+        step_min=Instrument.img_period)
+
+    ## Batch FOV generation over N satellites - TODO: build multiple sats into config/ main script
     gdfs = []
-    for tle in tles:
+    
+    for tle in track(tles, description="Processing..."):
+    # for tle in tles:
         sat = tle[0]
         fov_df = forecast_fovs(sat, times, inst)
         gdfs.append(fov_df)
-
     fov_df = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs="epsg:4326")
-    fov_df["lonspan"] = fov_df.bounds['maxx'] - fov_df.bounds['minx']
 
-    # Filter shapes crossing anti-meridian
+    ## Filter shapes crossing anti-meridian - also in main function
+    ## TODO: Switch to stactools solution for this
+    fov_df["lonspan"] = fov_df.bounds['maxx'] - fov_df.bounds['minx']
     fov_df = fov_df[fov_df["lonspan"] < 20].copy()
 
-    # Filter by AOI
-    xmin, ymin, xmax, ymax= aoi.total_bounds
-    fov_df = fov_df.cx[xmin: xmax, ymin: ymax]
-
-    # Create cmap for unique satellites and create color column
+    ## Create cmap for unique satellites and create color column
     sat_ids = list(fov_df["id"].unique()).sort()
     cmap = branca.colormap.StepColormap(['red', 'blue'], sat_ids, vmin=139084, vmax = 149260)
     fov_df['color'] = fov_df['id'].apply(cmap)
 
+    ## Save to geojson based on sat name
+    for satname in fov_df.satellite.unique():
+        fov_df[fov_df.satellite==satname].to_file("./tmp/{}_fovs.geojson".format(satname.replace(" ", "_")))
+
+    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    aoi = gpd.read_file('./aois/eastern_us.geojson').geometry # ...so use AOI for subsection of US
+
+    ## Filter fov_df by aoi
+    xmin, ymin, xmax, ymax= aoi.total_bounds
+    fov_df = fov_df.cx[xmin: xmax, ymin: ymax]
+
     ## Coverage data analysis for single satellite/ batch of satellites
-    # 1) Create a grid of equally spaced points
-    grid, grid_shape = create_grid(aoi.total_bounds, xcell_size, ycell_size)
+    grid, grid_shape = calculate_revisits(fov_df, aoi, grid_x=xcell_size, grid_y=ycell_size)
+    grid.to_file('./tmp/all_revisits.geojson')
+    print(grid.n_visits.fillna(0).describe())
 
-    # 2) Add "n_visits" column to grid using sjoin/ dissolve
-    shapes = gpd.GeoDataFrame(fov_df.geometry)
-    merged = gpd.sjoin(shapes, grid, how='left', predicate="intersects")
-    merged['n_visits']=0 # this will be replaced with nan or positive int where n_visits > 0
-    dissolve = merged.dissolve(by="index_right", aggfunc="count") # no difference in count vs. sum here?
-    grid.loc[dissolve.index, 'n_visits'] = dissolve.n_visits.values
 
-    print(grid.n_visits.describe())
+    ## Plotting FOVs
 
+    ## Make a folium map
+    m = fov_df.explore(color="color", tooltip=["satellite", "time"])
+
+    ## Add WRS2
+    # wrs2 = gpd.read_file('./WRS2_descending_0/WRS2_descending.shp')
+    # wrs2 = wrs2.cx[xmin: xmax, ymin: ymax]
+    # folium.GeoJson(data=wrs2["geometry"], overlay=False).add_to(m)
+
+    m.save("./tmp/fovs_map.html")
+
+    ## Plotting Revisits
+
+    m = revisit_map(grid, grid_shape, grid_x=xcell_size, grid_y=ycell_size)
+    m.save("./tmp/revisit_map.html")

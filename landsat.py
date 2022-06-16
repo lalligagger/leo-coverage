@@ -1,8 +1,10 @@
 from skyfield.api import load, EarthSatellite
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone, timedelta
-# import shapely
-from coverage import * 
+import pprint
+
+pp = pprint.PrettyPrinter(indent=4)
+# from coverage import * 
 
 ts = load.timescale()
 now_utc = datetime.now(timezone.utc)
@@ -56,3 +58,8 @@ class Platform:
     x_pos_km: float = 0.0
     y_pos_km: float = 0.0
     z_pos_km: float = 0.0
+
+
+if __name__ == "__main__":
+    landsat9 = Instrument()
+    pp.pprint(asdict(landsat9))
