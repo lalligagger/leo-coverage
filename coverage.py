@@ -241,7 +241,6 @@ def get_inst_fov(sat, time, inst):
     return cs_lla_dict
 
 def forecast_fovs(sat, times, inst):
-
     # Create temporary function that can be vectorized
     def gen_fov_poly(time):
         # Get the ITRS position of the satellite as origin of LVLH frame.
