@@ -6,6 +6,7 @@ from scipy.spatial.transform import Rotation
 
 import shapely
 import branca
+import folium
 from shapely.geometry import Polygon
 import geopandas as gpd
 import pandas as pd
@@ -297,6 +298,58 @@ def create_grid(bounds, xcell_size, ycell_size):
     
     return grid, grid_shape
 
+def calculate_revisits(fov_df, aoi, grid_x=0.1, grid_y=0.1):
+    # 1) Create a grid of equally spaced points
+    grid, grid_shape = create_grid(aoi.total_bounds, grid_x, grid_y)
+
+    # 2) Add "n_visits" column to grid using sjoin/ dissolve
+    shapes = gpd.GeoDataFrame(fov_df.geometry)
+    merged = gpd.sjoin(shapes, grid, how='left', predicate="intersects")
+    merged['n_visits']=0 # this will be replaced with nan or positive int where n_visits > 0
+    dissolve = merged.dissolve(by="index_right", aggfunc="count") # no difference in count vs. sum here?
+    grid.loc[dissolve.index, 'n_visits'] = dissolve.n_visits.values
+
+    grid.to_file('./tmp/n_visits.geojson')
+    grid.n_visits.fillna(0).describe()
+
+    return grid, grid_shape
+
+
+## Plotting Revisit Map
+def revisit_map(grid, grid_shape, grid_x, grid_y):
+    ## Form 2D array of n_visits based on grid shape
+    img = np.rot90(grid.n_visits.values.reshape(grid_shape))
+
+    ## Create colormap and apply to img
+    ## TODO: Make this our geoTIFF item for STAC catalog
+    colormap = branca.colormap.step.viridis.scale(1, grid.n_visits.max())
+    # colormap = branca.colormap.step.viridis.scale(1, 2)
+
+    def colorfunc(x):
+        if np.isnan(x):
+            return (0,0,0,0)
+        else:
+            return colormap.rgba_bytes_tuple(x)
+
+    # Apply cmap to img array and rearrange for RGBA
+    cmap = np.vectorize(colorfunc)
+    rgba_img = np.array(cmap(img))
+    rgba_img = np.moveaxis(rgba_img, 0, 2)
+
+    # Update image corner bounds based on cell size
+    xmin, ymin, xmax, ymax= grid.total_bounds
+    xmin = xmin - grid_x/2
+    ymin = ymin - grid_y/2
+    xmax = xmax + grid_x/2
+    ymax = ymax + grid_y/2
+
+    m = folium.Map()
+    m.fit_bounds([[ymin, xmin], [ymax, xmax]])
+    m.add_child(folium.raster_layers.ImageOverlay(rgba_img, opacity=.4, mercator_project=True,# crs="EPSG:4326",
+                                    bounds = [[ymin,xmin],[ymax,xmax]]))
+    colormap.add_to(m)
+    # m.save("./tmp/revisits_map.html")
+    return m
 
 
 if __name__ == "__main__":
@@ -349,3 +402,4 @@ if __name__ == "__main__":
     grid.loc[dissolve.index, 'n_visits'] = dissolve.n_visits.values
 
     print(grid.n_visits.describe())
+
