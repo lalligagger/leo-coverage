@@ -16,6 +16,8 @@ dependencies:
   - rasterio
   - pygeos
   - rich
+  - jupyterlab
+  - nb_conda_kernels
   - pip
   - pip:
     - scipy
