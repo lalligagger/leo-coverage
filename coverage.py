@@ -159,12 +159,12 @@ def get_los(sat, time):
     geo = sat.at(time)
     xyz_dist_rates = geo.frame_xyz_and_velocity(itrs)
     xyz_dist = xyz_dist_rates[0]
-    pointing = -xyz_dist.km / xyz_dist.length().km
+    nadir = -xyz_dist.km / xyz_dist.length().km
 
     xyz_vel = xyz_dist_rates[1]
     # bearing = xyz_vel.km_per_s / np.linalg.norm(xyz_vel.km_per_s)
 
-    los_xyz = los_to_earth(xyz_dist.km, pointing)  # input is meters
+    los_xyz = los_to_earth(xyz_dist.km, nadir)  # input is meters
 
     los = Distance(km=los_xyz)
     los_itrs = ITRSPosition(los)
@@ -180,25 +180,25 @@ def get_lvlh_pointing(sat, time):
     geo = sat.at(time)
     xyz_dist_rates = geo.frame_xyz_and_velocity(itrs)
     xyz_dist = xyz_dist_rates[0]
-    pointing = -xyz_dist.km / xyz_dist.length().km
+    local_vertical = -xyz_dist.km / xyz_dist.length().km
 
     xyz_vel = xyz_dist_rates[1]
     bearing = xyz_vel.km_per_s / np.linalg.norm(xyz_vel.km_per_s)
 
-    neg_orb_normal = -np.cross(pointing, bearing)
-    x_axis = np.cross(neg_orb_normal, pointing)
-    lvlh = {"X": x_axis, "Y": neg_orb_normal, "Z": pointing}
+    neg_orb_normal = -np.cross(local_vertical, bearing)
+    local_horizontal = np.cross(neg_orb_normal, local_vertical)
+    lvlh = {"X": local_horizontal, "Y": neg_orb_normal, "Z": local_vertical}
 
-    return lvlh, pointing
+    return lvlh#, local_vertical
 
 
 def get_inst_fov(sat, time, inst):
-
-    lvlh, pointing = get_lvlh_pointing(sat, time)
+    # https://ai-solutions.com/_freeflyeruniversityguide/attitude_reference_frames.htm
+    # lvlh, pointing = get_lvlh_pointing(sat, time)
+    lvlh = get_lvlh_pointing(sat, time)
     xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
     xyz_dist = xyz_dist_rates[0]
     z_rate = xyz_dist_rates[1]
-    # direction.append(z_rate.km_per_s[2])
 
     # Empty dict to populate with lat/ lons, mapped from cs_dict in angle space
     cs_lla_dict = {
@@ -221,17 +221,18 @@ def get_inst_fov(sat, time, inst):
 
         # Rotations with scipy:
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html
-        # Rotate about X
+
+        # Rotation about X
         rot_X_vec = rot_X_rad * rot_X_ax
         rot_X = Rotation.from_rotvec(rot_X_vec)
-        # los_X = rot_X.apply(pointing)
 
-        # Rotate about Y for final LOS
+        # Rotation about Y 
         rot_Y_vec = rot_Y_rad * rot_Y_ax
         rot_Y = Rotation.from_rotvec(rot_Y_vec)
-        # los_XY = rot_Y.apply(los_X)
+
+        # Calculate final LOS
         rot = rot_X * rot_Y
-        los_XY = rot.apply(pointing)
+        los_XY = rot.apply(lvlh["Z"])
 
         # Get Earth intercept of LOS, create ITRS position object
         los_xyz = los_to_earth(xyz_dist.km, los_XY)
