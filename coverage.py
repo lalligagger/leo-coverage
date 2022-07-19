@@ -246,37 +246,28 @@ def get_inst_fov(sat, time, inst):
 
 
 def forecast_fovs(sat, times, inst):
-    # Create temporary function that can be vectorized
+    ts = load.timescale()
 
-    def gen_fov_poly(time):
-        # Get the ITRS position of the satellite as origin of LVLH frame.
-        xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
-        # xyz_dist = xyz_dist_rates[0]
-        z_rate = xyz_dist_rates[1]
+    df = gpd.GeoDataFrame({'datetime': times.utc_datetime()})
+    df["satellite"] = sat.name
+    df["id"] = np.abs(sat.target)
+    df["time"] = times.utc_strftime()
 
-        # Descending only filter:
-        if z_rate.km_per_s[2] < 0:
+    def _get_inst_fov(time):
+        ts_time = ts.from_datetime(time)
+        # return Polygon(get_inst_fov(sat, ts_time, inst))
+        cs_lla_dict = get_inst_fov(sat, ts_time, inst)
+        return Polygon(
+        [
+            (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]),
+            (cs_lla_dict["c2"]["lon"], cs_lla_dict["c2"]["lat"]),
+            (cs_lla_dict["c3"]["lon"], cs_lla_dict["c3"]["lat"]),
+            (cs_lla_dict["c4"]["lon"], cs_lla_dict["c4"]["lat"]),
+            (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]),
+        ]
+    )
 
-            cs_lla_dict = get_inst_fov(sat, time, inst)
-
-            # Add lat, lon offset for each corner of FOV
-            return Polygon(
-                [
-                    (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]),
-                    (cs_lla_dict["c2"]["lon"], cs_lla_dict["c2"]["lat"]),
-                    (cs_lla_dict["c3"]["lon"], cs_lla_dict["c3"]["lat"]),
-                    (cs_lla_dict["c4"]["lon"], cs_lla_dict["c4"]["lat"]),
-                    (cs_lla_dict["c1"]["lon"], cs_lla_dict["c1"]["lat"]),
-                ]
-            )
-
-    vfunc = np.vectorize(gen_fov_poly)
-    polys = vfunc(times)
-
-    fov_df = gpd.GeoDataFrame(data=polys, columns=["geometry"], crs="EPSG:4326")
-    fov_df["satellite"] = sat.name
-    fov_df["id"] = np.abs(sat.target)
-    fov_df["time"] = times.utc_strftime()
+    fov_df = df.set_geometry(df['datetime'].apply(_get_inst_fov), crs="EPSG:4326")
 
     return fov_df
 
