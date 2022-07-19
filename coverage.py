@@ -156,13 +156,16 @@ def los_to_earth(position, pointing):
 
 
 def get_los(sat, time):
+    """
+    No longer used. Keep as convenience function?
+    """
+
     geo = sat.at(time)
     xyz_dist_rates = geo.frame_xyz_and_velocity(itrs)
     xyz_dist = xyz_dist_rates[0]
     nadir = -xyz_dist.km / xyz_dist.length().km
 
     xyz_vel = xyz_dist_rates[1]
-    # bearing = xyz_vel.km_per_s / np.linalg.norm(xyz_vel.km_per_s)
 
     los_xyz = los_to_earth(xyz_dist.km, nadir)  # input is meters
 
@@ -177,6 +180,13 @@ def get_los(sat, time):
 
 
 def get_lvlh_pointing(sat, time):
+    """
+    This function defines the unit vectors which make up the satellites LVLH (local vertical, local horizontal) frame.
+
+    It uses the instantaenous position and bearing to calculate the unit vectors using cross-products.
+
+    from: https://ai-solutions.com/_freeflyeruniversityguide/attitude_reference_frames.htm
+    """
     geo = sat.at(time)
     xyz_dist_rates = geo.frame_xyz_and_velocity(itrs)
     xyz_dist = xyz_dist_rates[0]
@@ -193,7 +203,11 @@ def get_lvlh_pointing(sat, time):
 
 
 def get_inst_fov(sat, time, inst):
-    # https://ai-solutions.com/_freeflyeruniversityguide/attitude_reference_frames.htm
+    """
+    This function takes in the camera model with satellite object and time, to calculate the instantaneous FOV.
+    
+    Can only take a single time value as input, which must be a skyfield timescale object.
+    """
     # lvlh, pointing = get_lvlh_pointing(sat, time)
     lvlh = get_lvlh_pointing(sat, time)
     xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
@@ -234,11 +248,11 @@ def get_inst_fov(sat, time, inst):
         rot = rot_X * rot_Y
         los_XY = rot.apply(lvlh["Z"])
 
-        # Get Earth intercept of LOS, create ITRS position object
+        # Calculate Earth intercept of LOS, create ITRS position object
         los_xyz = los_to_earth(xyz_dist.km, los_XY)
         los_itrs = ITRSPosition(Distance(km=los_xyz))
 
-        # Calculate intercept lat/ lon from ITRS frame
+        # Convert intercept lat/ lon from ITRS frame
         los_lat, los_lon = wgs84.latlon_of(los_itrs.at(time))
         cs_lla_dict[c]["lat"] = los_lat.degrees
         cs_lla_dict[c]["lon"] = los_lon.degrees
@@ -247,6 +261,11 @@ def get_inst_fov(sat, time, inst):
 
 
 def forecast_fovs(sat, times, inst):
+    """
+    This function handles FOV forecasting in batches (over multiple times). It takes in satellite, times as datetime array, and camera model.
+
+    The datetime is converted to skyfield timescale and passed to a temporary function which can be used with df.apply().
+    """
     ts = load.timescale()
 
     df = gpd.GeoDataFrame({'datetime': times.utc_datetime()})
@@ -275,6 +294,9 @@ def forecast_fovs(sat, times, inst):
 
 
 def create_grid(bounds, xcell_size, ycell_size):
+    """
+    Create a grid of input bound and x/y cell sizes (all in lat/lon degrees), for revisit calculations.
+    """
     (xmin, ymin, xmax, ymax) = bounds
 
     # Create grid of points with regular spacing in degrees
@@ -297,6 +319,11 @@ def create_grid(bounds, xcell_size, ycell_size):
 
 
 def calculate_revisits(fov_df, aoi, grid_x=0.1, grid_y=0.1):
+    """
+    Calculates revisits based on a geodataframe of FOVs, geojson AOI, and user-defined grid spacing (lat/lon).
+
+    Computation is done using gdf.sjoin and the return is a dataframe with row for each grid point.
+    """
     # 1) Create a grid of equally spaced points
     grid, grid_shape = create_grid(aoi.total_bounds, grid_x, grid_y)
 
@@ -310,7 +337,6 @@ def calculate_revisits(fov_df, aoi, grid_x=0.1, grid_y=0.1):
         by="index_right", aggfunc="count"
     )  # no difference in count vs. sum here?
     grid.loc[dissolve.index, "n_visits"] = dissolve.n_visits.values
-    grid.n_visits.fillna(0).describe()
 
     return grid, grid_shape
 
