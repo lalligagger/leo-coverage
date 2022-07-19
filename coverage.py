@@ -115,12 +115,8 @@ def los_to_earth(position, pointing):
     a = 6378.137
     b = 6378.137
     c = 6356.752314245
-    x = position[0]
-    y = position[1]
-    z = position[2]
-    u = pointing[0]
-    v = pointing[1]
-    w = pointing[2]
+    x, y, z = position
+    u, v, w = pointing
 
     value = (
         -(a**2) * b**2 * w * z - a**2 * c**2 * v * y - b**2 * c**2 * u * x
@@ -251,6 +247,7 @@ def get_inst_fov(sat, time, inst):
 
 def forecast_fovs(sat, times, inst):
     # Create temporary function that can be vectorized
+
     def gen_fov_poly(time):
         # Get the ITRS position of the satellite as origin of LVLH frame.
         xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
@@ -282,6 +279,7 @@ def forecast_fovs(sat, times, inst):
     fov_df["time"] = times.utc_strftime()
 
     return fov_df
+
 
 
 def create_grid(bounds, xcell_size, ycell_size):
