@@ -246,6 +246,7 @@ def get_inst_fov(sat, time, inst):
 
         # Calculate final LOS
         rot = rot_X * rot_Y
+        # rot = Rotation.from_rotvec([rot_X_vec, rot_Y_vec])
         los_XY = rot.apply(lvlh["Z"])
 
         # Calculate Earth intercept of LOS, create ITRS position object
@@ -413,7 +414,7 @@ if __name__ == "__main__":
         step_min=Instrument.img_period,
     )
 
-    ## Batch FOV generation over N satellites - TODO: build multiple sats into config/ main script
+    ## Batch FOV generation over N satellites
     gdfs = []
 
     for tle in track(tles, description="Processing..."):
