@@ -201,7 +201,7 @@ def get_lvlh_pointing(sat, time):
     local_horizontal = np.cross(neg_orb_normal, local_vertical)
     lvlh = {"X": local_horizontal, "Y": neg_orb_normal, "Z": local_vertical}
 
-    return lvlh#, local_vertical
+    return lvlh
 
 
 def get_inst_fov(sat, time, inst):
@@ -210,7 +210,6 @@ def get_inst_fov(sat, time, inst):
     
     Can only take a single time value as input, which must be a skyfield timescale object.
     """
-    # lvlh, pointing = get_lvlh_pointing(sat, time)
     lvlh = get_lvlh_pointing(sat, time)
     xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
     xyz_dist = xyz_dist_rates[0]
@@ -246,9 +245,8 @@ def get_inst_fov(sat, time, inst):
         rot_Y_vec = rot_Y_rad * rot_Y_ax
         rot_Y = Rotation.from_rotvec(rot_Y_vec)
 
-        # Calculate final LOS
+        # Calculate final LOS, by applying X & Y rotations to Z basis vector
         rot = rot_X * rot_Y
-        # rot = Rotation.from_rotvec([rot_X_vec, rot_Y_vec])
         los_XY = rot.apply(lvlh["Z"])
 
         # Calculate Earth intercept of LOS, create ITRS position object
