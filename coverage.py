@@ -7,9 +7,11 @@ from scipy.spatial.transform import Rotation
 import shapely
 import branca
 import folium
+import fiona
 from shapely.geometry import Polygon
 import geopandas as gpd
 import pandas as pd
+from stactools.core.utils import antimeridian
 from rich import print
 from rich.progress import track
 
@@ -290,6 +292,14 @@ def forecast_fovs(sat, times, inst):
 
     fov_df = df.set_geometry(df['datetime'].apply(_get_inst_fov), crs="EPSG:4326")
 
+    fov_df["lonspan"] = fov_df.bounds['maxx'] - fov_df.bounds['minx']
+    mask = fov_df["lonspan"] > 20
+
+    fov_df.loc[mask, "geometry"] = fov_df.loc[mask, "geometry"].apply(antimeridian.split)
+    # fov_df.loc[mask, "geometry"] = None
+    
+    fov_df = fov_df.drop('lonspan', axis=1)
+
     return fov_df
 
 
@@ -390,7 +400,7 @@ if __name__ == "__main__":
     from datetime import datetime, timezone, timedelta
 
     start_dt = datetime.fromisoformat(Scene.start_utc)
-    num_days = 8
+    num_days = 1
     xcell_size = ycell_size = 0.1
 
     tles = gen_sats(
@@ -424,11 +434,6 @@ if __name__ == "__main__":
         gdfs.append(fov_df)
     fov_df = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs="epsg:4326")
 
-    ## Filter shapes crossing anti-meridian - also in main function
-    ## TODO: Switch to stactools solution for this
-    fov_df["lonspan"] = fov_df.bounds["maxx"] - fov_df.bounds["minx"]
-    fov_df = fov_df[fov_df["lonspan"] < 20].copy()
-
     ## Create cmap for unique satellites and create color column
     sat_ids = list(fov_df["id"].unique()).sort()
     cmap = branca.colormap.StepColormap(
@@ -438,9 +443,10 @@ if __name__ == "__main__":
 
     ## Save to geojson based on sat name
     for satname in fov_df.satellite.unique():
-        fov_df[fov_df.satellite == satname].to_file(
-            "./tmp/{}_fovs.geojson".format(satname.replace(" ", "_"))
-        )
+        with fiona.Env(OSR_WKT_FORMAT="WKT2_2018"):
+            fov_df[fov_df.satellite == satname].to_file(
+                "./tmp/{}_fovs.geojson".format(satname.replace(" ", "_"))
+            )
 
     world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
     aoi = gpd.read_file(
@@ -455,13 +461,14 @@ if __name__ == "__main__":
     grid, grid_shape = calculate_revisits(
         fov_df, aoi, grid_x=xcell_size, grid_y=ycell_size
     )
-    grid.to_file("./tmp/all_revisits.geojson")
+    with fiona.Env(OSR_WKT_FORMAT="WKT2_2018"):
+        grid.to_file("./tmp/all_revisits.geojson")
     print(grid.n_visits.fillna(0).describe())
 
     ## Plotting FOVs
 
     ## Make a folium map
-    m = fov_df.explore(color="color", tooltip=["satellite", "time"])
+    m = fov_df.drop('datetime', axis=1).explore(color="color", tooltip=["satellite", "time"])
 
     ## Add WRS2
     # wrs2 = gpd.read_file('./WRS2_descending_0/WRS2_descending.shp')
