@@ -142,11 +142,11 @@ def los_to_earth(position, pointing):
         a**2 * b**2 * w**2 + a**2 * c**2 * v**2 + b**2 * c**2 * u**2
     )
 
-    if radical < 0:
+    if radical.any() < 0:
         raise ValueError("The Line-of-Sight vector does not point toward the Earth")
     d = (value - a * b * c * np.sqrt(radical)) / magnitude
 
-    if d < 0:
+    if d.any() < 0:
         raise ValueError("The Line-of-Sight vector does not point toward the Earth")
 
     return np.array(
