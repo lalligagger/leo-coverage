@@ -3,6 +3,7 @@ from skyfield.api import load, wgs84, Distance
 from skyfield.toposlib import ITRSPosition
 from skyfield.framelib import itrs
 from scipy.spatial.transform import Rotation
+from functools import partial
 
 import shapely
 import branca
@@ -203,6 +204,56 @@ def get_lvlh_pointing(sat, time):
 
     return lvlh
 
+def get_inst_fov2(sat, time, inst):
+    lvlh = get_lvlh_pointing(sat, time)
+    xyz_dist_rates = sat.at(time).frame_xyz_and_velocity(itrs)
+    xyz_dist = xyz_dist_rates[0]
+    z_rate = xyz_dist_rates[1]
+
+    ## TODO: CAN ALL THESE VECTORS BE ROTATED ONCE??! (Instead of 1 vec x4 rotations)
+    # "corners": {
+    #     "c1": {"X": -hfov_deg / 2, "Y": vfov_deg / 2},
+    #     "c2": {"X": hfov_deg / 2, "Y": vfov_deg / 2},
+    #     "c3": {"X": hfov_deg / 2, "Y": -vfov_deg / 2},
+    #     "c4": {"X": -hfov_deg / 2, "Y": -vfov_deg / 2},
+    # },
+
+    # Empty dict to populate with lat/ lons, mapped from cs_dict in angle space
+    cs_lla_dict = {
+        "c1": {"lat": None, "lon": None},
+        "c2": {"lat": None, "lon": None},
+        "c3": {"lat": None, "lon": None},
+        "c4": {"lat": None, "lon": None},
+    }
+
+    # Rotations with scipy:
+    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html
+
+    # Rotation about X&Y
+    rotsmat = np.array([(Rotation.from_rotvec(np.radians(inst["corners"][c]["X"])*lvlh["X"])\
+                        *Rotation.from_rotvec(np.radians(inst["corners"][c]["Y"])*lvlh["Y"])).as_matrix() for c in inst["corners"]])
+
+    rots = Rotation.from_matrix(rotsmat)
+
+    # Calculate final LOS, by applying X & Y rotations to Z basis vector
+    los_XY = rots.apply(lvlh["Z"])
+    _los_to_earth = partial(los_to_earth, xyz_dist.km)
+    los_xyz = np.apply_along_axis(_los_to_earth, 1, los_XY)
+
+    # Convert intercept lat/ lon from ITRS frame
+        # Calculate Earth intercept of LOS, create ITRS position object
+    c = 0
+    keys = list(cs_lla_dict.keys())
+
+    for xyz in los_xyz:
+        key = keys[c]
+        los_itrs = ITRSPosition(Distance(km=xyz))
+        los_lat, los_lon = wgs84.latlon_of(los_itrs.at(time))
+        cs_lla_dict[key]["lat"] = los_lat.degrees
+        cs_lla_dict[key]["lon"] = los_lon.degrees
+        c += 1
+
+    return cs_lla_dict
 
 def get_inst_fov(sat, time, inst):
     """
