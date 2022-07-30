@@ -201,6 +201,7 @@ def get_lvlh_pointing(sat, time):
     neg_orb_normal = -np.cross(local_vertical, bearing)
     local_horizontal = np.cross(neg_orb_normal, local_vertical)
     lvlh = {"X": local_horizontal, "Y": neg_orb_normal, "Z": local_vertical}
+    # lvlh = np.array(local_horizontal, neg_orb_normal, local_vertical)
 
     return lvlh
 
